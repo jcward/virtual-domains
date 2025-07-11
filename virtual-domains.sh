@@ -124,10 +124,12 @@ EOF
 }
 
 teardown_all() {
-  read -p "⚠️  This will remove all virtual domain config and undo all setup. Are you sure? [y/N]: " confirm
-  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-    echo "Aborted."
-    exit 1
+  if [[ "$1" != "--force" ]]; then
+    read -p "⚠️  This will remove all virtual domain config and undo all setup. Are you sure? [y/N]: " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+      echo "Aborted."
+      exit 1
+    fi
   fi
 
   echo "Removing all virtual domain IPs and DNS entries..."
@@ -184,7 +186,7 @@ case "$1" in
   --up) up_all_ips ;;
   --down) down_all_ips ;;
   --install-service) install_service ;;
-  --teardown) teardown_all ;;
+  --teardown) teardown_all "$2" ;;
   "") print_usage ;;
   *) add_domain "$1" "$2" ;;
 esac

@@ -1,0 +1,10 @@
+Package: virtual-domains
+Version: 0.1.0
+Section: admin
+Priority: optional
+Architecture: all
+Depends: bash, coreutils, iproute2
+Maintainer: Jeff Ward <jeff.ward@gmail.com>
+Description: Local development domain + IP manager with DNS plugin support
+ A script for assigning virtual IPs and mapping dev domains on Linux.
+ Supports pluggable DNS systems, systemd, and LAN visibility.

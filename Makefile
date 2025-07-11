@@ -11,6 +11,7 @@ install:
 	install -m755 dns-plugins/*.sh $(LIB_DIR)
 
 uninstall:
+	$(BIN_DIR)/virtual-domains.sh --teardown --force || true
 	rm -f $(BIN_DIR)/virtual-domains.sh
 	rm -rf $(LIB_DIR)
 	rm -f /etc/systemd/system/virtual-domains.service
