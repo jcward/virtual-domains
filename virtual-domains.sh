@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VERSION="0.0.0-DEV"
+
 set -e
 
 CONF_FILE="/etc/virtual-domains.conf"
@@ -12,7 +14,7 @@ get_dns_mode() { grep '^# dns=' "$CONF_FILE" | cut -d= -f2; }
 
 ensure_conf_exists() {
   if [ ! -f "$CONF_FILE" ]; then
-    echo "=== Virtual Domain Setup ==="
+    echo "=== Virtual Domain $VERSION Setup ==="
     echo "How should your dev domains be accessible?"
     echo " [1] Host-only (via loopback interface)"
     echo " [2] LAN-visible (via your main network interface)"
@@ -154,14 +156,16 @@ list_domains() {
 }
 
 print_usage() {
+  echo "virtual-domains.sh $VERSION"
   echo "Usage:"
-  echo "  $0 domain ip         Add domain"
-  echo "  $0 --purge domain    Remove domain"
-  echo "  $0 --list            List domains"
-  echo "  $0 --up              Re-assign all IPs"
-  echo "  $0 --down            Remove all IPs"
-  echo "  $0 --install-service Install systemd unit"
-  echo "  $0 --teardown        Uninstall everything (with prompt)"
+  echo "  virtual-domains.sh domain ip         Add domain"
+  echo "  virtual-domains.sh --purge domain    Remove domain"
+  echo "  virtual-domains.sh --list            List domains"
+  echo "  virtual-domains.sh --up              Re-assign all IPs"
+  echo "  virtual-domains.sh --down            Remove all IPs"
+  echo "  virtual-domains.sh --install-service Install systemd unit"
+  echo "  virtual-domains.sh --teardown        Uninstall everything (with prompt)"
+  echo "  virtual-domains.sh --version         Print version"
 }
 
 call_dns_plugin_init() {
@@ -187,6 +191,7 @@ case "$1" in
   --down) down_all_ips ;;
   --install-service) install_service ;;
   --teardown) teardown_all "$2" ;;
+  --version) echo "$VERSION" ;;
   "") print_usage ;;
   *) add_domain "$1" "$2" ;;
 esac

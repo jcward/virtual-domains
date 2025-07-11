@@ -1,27 +1,37 @@
 #!/bin/bash
 set -e
 
-VERSION="0.1.0"
+if [[ -z "$1" ]]; then
+  echo "Usage: $0 <version>"
+  exit 1
+fi
+
+VERSION="$1"
 PKG_NAME="virtual-domains"
 PKG_DIR="build/${PKG_NAME}_${VERSION}"
 
 echo "🔧 Building $PKG_NAME version $VERSION"
 
-# Clean previous
+# Clean and prepare structure
 rm -rf "$PKG_DIR"
 mkdir -p "$PKG_DIR/DEBIAN"
 mkdir -p "$PKG_DIR/usr/local/bin"
 mkdir -p "$PKG_DIR/usr/local/lib/virtual-domains"
 
-# Copy main script and plugins
-cp virtual-domains.sh "$PKG_DIR/usr/local/bin/"
+# Inject version into script
+sed "s/0.0.0-DEV/$VERSION/" virtual-domains.sh > "$PKG_DIR/usr/local/bin/virtual-domains.sh"
+chmod 755 "$PKG_DIR/usr/local/bin/virtual-domains.sh"
+
+# Copy plugins
 cp dns-plugins/*.sh "$PKG_DIR/usr/local/lib/virtual-domains/"
 
-# Copy control files
-cp debian/control "$PKG_DIR/DEBIAN/control"
+# Inject version into control
+sed "s/0.0.0-DEV/$VERSION/" debian/control > "$PKG_DIR/DEBIAN/control"
+
+# Copy prerm
 cp debian/prerm "$PKG_DIR/DEBIAN/prerm"
+chmod 755 "$PKG_DIR/DEBIAN/prerm"
 
-# Build package
+# Build .deb
 dpkg-deb --build "$PKG_DIR"
-
 echo "✅ Package built: $PKG_DIR.deb"
