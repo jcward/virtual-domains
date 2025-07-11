@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PLUGIN_STATE_DIR="/run/virtual-domains-mdns"
-mkdir -p "$PLUGIN_STATE_DIR"
+sudo mkdir -p "$PLUGIN_STATE_DIR"
 
 case "$1" in
   init)

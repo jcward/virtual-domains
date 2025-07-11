@@ -31,7 +31,7 @@ case "$1" in
     echo "🧹 Deleting all virtual-domains entries from MikroTik..."
     run_ssh '/ip dns static remove [find comment=\"virtual-domains\"]'
     echo "Removing $CONFIG_FILE"
-    rm -f $CONFIG_FILE
+    sudo rm -f "$CONFIG_FILE"
     ;;
   add)
     load_config
