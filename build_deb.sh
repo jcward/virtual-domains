@@ -10,7 +10,7 @@ VERSION="$1"
 PKG_NAME="virtual-domains"
 PKG_DIR="build/${PKG_NAME}_${VERSION}"
 
-echo "🔧 Building $PKG_NAME version $VERSION"
+echo "🔧 Building $PKG_NAME version $VERSION at $(date)" | tee -a .build.history
 
 # Clean and prepare structure
 rm -rf "$PKG_DIR"

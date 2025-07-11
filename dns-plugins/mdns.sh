@@ -10,20 +10,20 @@ case "$1" in
   teardown)
     echo "🧹 Removing mDNS entries..."
     pkill -f 'avahi-publish -a' || true
-    rm -rf "$PLUGIN_STATE_DIR"
+    sudo rm -rf "$PLUGIN_STATE_DIR"
     ;;
   add)
     domain="$2"
     ip="$3"
     echo "📣 Publishing $domain as $ip via mDNS"
     avahi-publish -a "$domain" "$ip" &
-    echo $! > "$PLUGIN_STATE_DIR/$domain.pid"
+    echo "$!" | sudo tee "$PLUGIN_STATE_DIR/$domain.pid" > /dev/null
     ;;
   remove)
     domain="$2"
     if [ -f "$PLUGIN_STATE_DIR/$domain.pid" ]; then
-      kill "$(cat "$PLUGIN_STATE_DIR/$domain.pid")" || true
-      rm "$PLUGIN_STATE_DIR/$domain.pid"
+      sudo kill "$(cat "$PLUGIN_STATE_DIR/$domain.pid")" || true
+      sudo rm "$PLUGIN_STATE_DIR/$domain.pid"
       echo "🛑 Removed mDNS for $domain"
     fi
     ;;

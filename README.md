@@ -25,13 +25,14 @@ This installs:
 ## Usage
 
 ```sh
-sudo virtual-domains.sh mysite.test 10.0.1.50
+sudo virtual-domains.sh --add mysite.test 10.0.1.50
 sudo virtual-domains.sh --purge mysite.test
 sudo virtual-domains.sh --list
 sudo virtual-domains.sh --up     # reassign all
 sudo virtual-domains.sh --down   # remove all
 sudo virtual-domains.sh --install-service
 sudo virtual-domains.sh --teardown
+sudo virtual-domains.sh --version
 ```
 
 ## DNS Plugin Interface

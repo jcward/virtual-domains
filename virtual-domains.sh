@@ -8,9 +8,46 @@ CONF_FILE="/etc/virtual-domains.conf"
 BEGIN_MARKER="### BEGIN virtual-domains"
 END_MARKER="### END virtual-domains"
 
+# Get directory where this script is installed
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+LIB_DIR="$SCRIPT_DIR/../lib/virtual-domains"
+
 # Read from config
 get_iface() { grep '^# iface=' "$CONF_FILE" | cut -d= -f2; }
 get_dns_mode() { grep '^# dns=' "$CONF_FILE" | cut -d= -f2; }
+
+# Get IPv4 address and subnet for an interface
+get_interface_info() {
+  local iface=$1
+  local info=$(ip addr show "$iface" 2>/dev/null | grep 'inet ' | grep -v '127.0.0.1' | head -1)
+  if [ -n "$info" ]; then
+    echo "$info" | awk '{print $2}'
+  fi
+}
+
+# Auto-detect subnet from interface
+get_suggested_subnet() {
+  local iface=$1
+  local cidr=$(get_interface_info "$iface")
+  if [ -n "$cidr" ]; then
+    # Extract network portion (e.g., 192.168.1.100/24 -> 192.168.1.0/24)
+    python3 -c "
+import ipaddress
+try:
+    net = ipaddress.IPv4Network('$cidr', strict=False)
+    print(str(net))
+except:
+    pass
+" 2>/dev/null || echo ""
+  fi
+}
+
+# List available DNS plugins
+list_dns_plugins() {
+  if [ -d "$LIB_DIR" ]; then
+    find "$LIB_DIR" -name "*.sh" -executable -printf " - %f\n" | sort
+  fi
+}
 
 ensure_conf_exists() {
   if [ ! -f "$CONF_FILE" ]; then
@@ -20,7 +57,17 @@ ensure_conf_exists() {
     echo " [2] LAN-visible (via your main network interface)"
     read -p "Choice [1/2]: " choice
 
-    ip -o link show | awk -F': ' '{print " - "$2}'
+    echo
+    echo "Available interfaces:"
+    ip -o link show | while read -r line; do
+      iface=$(echo "$line" | awk -F': ' '{print $2}')
+      ipv4=$(get_interface_info "$iface")
+      if [ -n "$ipv4" ]; then
+        echo " - $iface ($ipv4)"
+      else
+        echo " - $iface"
+      fi
+    done
 
     if [ "$choice" == "1" ]; then
       mode="local"
@@ -29,15 +76,28 @@ ensure_conf_exists() {
     else
       mode="lan"
       read -p "Which interface to use (e.g. eth0): " iface
-      read -p "What subnet (e.g. 10.0.1.0/24): " subnet
+      
+      # Auto-suggest subnet based on interface
+      suggested_subnet=$(get_suggested_subnet "$iface")
+      if [ -n "$suggested_subnet" ]; then
+        read -p "What subnet (detected: $suggested_subnet): " subnet
+        subnet=${subnet:-$suggested_subnet}
+      else
+        read -p "What subnet (e.g. 10.0.1.0/24): " subnet
+      fi
     fi
 
-    echo "What DNS handling plugin should be used?"
-    echo " - etc_hosts (default /etc/hosts)"
+    echo
+    echo "Available DNS plugins:"
+    list_dns_plugins
     echo " - none (no DNS integration)"
-    echo " - /path/to/your/plugin.sh"
-    read -p "DNS mode [etc_hosts]: " dns_mode
-    dns_mode=${dns_mode:-etc_hosts}
+    read -p "DNS plugin name [etc_hosts.sh]: " dns_mode
+    dns_mode=${dns_mode:-etc_hosts.sh}
+    
+    # Convert to full path if it's just a filename
+    if [[ "$dns_mode" != "none" && ! "$dns_mode" = /* ]]; then
+      dns_mode="$LIB_DIR/$dns_mode"
+    fi
 
     echo "# mode=$mode" | sudo tee "$CONF_FILE"
     echo "# iface=$iface" | sudo tee -a "$CONF_FILE"
@@ -54,22 +114,28 @@ call_dns_plugin() {
   action=$1; domain=$2; ip=$3
   dns_mode=$(get_dns_mode)
   if [[ "$dns_mode" == "none" ]]; then
-    return
-  elif [[ "$dns_mode" == "etc_hosts" ]]; then
-    /usr/local/lib/virtual-domains/etc_hosts.sh "$action" "$domain" "$ip"
+    return 0
   elif [[ -x "$dns_mode" ]]; then
     "$dns_mode" "$action" "$domain" "$ip"
   else
     echo "Warning: DNS plugin $dns_mode not found or not executable."
+    return 1
   fi
 }
 
 add_domain() {
   domain=$1; ip=$2
   iface=$(get_iface)
+  
+  # Call DNS plugin first and respect exit code
+  if ! call_dns_plugin add "$domain" "$ip"; then
+    echo "Error: DNS plugin failed to add domain $domain. Aborting."
+    return 1
+  fi
+  
+  # Only proceed if DNS plugin succeeded
   echo "$domain $ip" | sudo tee -a "$CONF_FILE" > /dev/null
   sudo ip addr add "$ip/32" dev "$iface" || true
-  call_dns_plugin add "$domain" "$ip"
 }
 
 purge_domain() {
@@ -148,7 +214,7 @@ teardown_all() {
   echo "Removing $CONF_FILE..."
   sudo rm -f "$CONF_FILE"
 
-  echo "\nSo long, and thanks for all the fish! virtual-domains.sh out!"
+  echo "virtual-domains.sh removal complete"
 }
 
 list_domains() {
@@ -158,7 +224,7 @@ list_domains() {
 print_usage() {
   echo "virtual-domains.sh $VERSION"
   echo "Usage:"
-  echo "  virtual-domains.sh domain ip         Add domain"
+  echo "  virtual-domains.sh --add domain ip   Add domain"
   echo "  virtual-domains.sh --purge domain    Remove domain"
   echo "  virtual-domains.sh --list            List domains"
   echo "  virtual-domains.sh --up              Re-assign all IPs"
@@ -171,20 +237,19 @@ print_usage() {
 call_dns_plugin_init() {
   dns_mode=$(get_dns_mode)
   if [[ "$dns_mode" == "none" ]]; then return; fi
-  if [[ "$dns_mode" == "etc_hosts" ]]; then return; fi
   if [[ -x "$dns_mode" ]]; then "$dns_mode" init || true; fi
 }
 
 call_dns_plugin_teardown() {
   dns_mode=$(get_dns_mode)
   if [[ "$dns_mode" == "none" ]]; then return; fi
-  if [[ "$dns_mode" == "etc_hosts" ]]; then return; fi
   if [[ -x "$dns_mode" ]]; then "$dns_mode" teardown || true; fi
 }
 
 ### MAIN ###
 ensure_conf_exists
 case "$1" in
+  --add) add_domain "$2" "$3" ;;
   --purge) purge_domain "$2" ;;
   --list) list_domains ;;
   --up) up_all_ips ;;
@@ -192,6 +257,5 @@ case "$1" in
   --install-service) install_service ;;
   --teardown) teardown_all "$2" ;;
   --version) echo "$VERSION" ;;
-  "") print_usage ;;
-  *) add_domain "$1" "$2" ;;
+  *) print_usage ;;
 esac
