@@ -42,6 +42,9 @@ ensure_conf_exists() {
     echo "# subnet=$subnet" | sudo tee -a "$CONF_FILE"
     echo "# dns=$dns_mode" | sudo tee -a "$CONF_FILE"
     echo "# domain ip" | sudo tee -a "$CONF_FILE"
+
+    # Initialize the dns plugin
+    call_dns_plugin_init
   fi
 }
 
@@ -135,6 +138,9 @@ teardown_all() {
   sudo rm -f /etc/systemd/system/virtual-domains.service
   sudo systemctl daemon-reload
 
+  echo "Informing DNS plugin of teardown..."
+  call_dns_plugin_teardown
+
   echo "Removing $CONF_FILE..."
   sudo rm -f "$CONF_FILE"
 
@@ -154,6 +160,20 @@ print_usage() {
   echo "  $0 --down            Remove all IPs"
   echo "  $0 --install-service Install systemd unit"
   echo "  $0 --teardown        Uninstall everything (with prompt)"
+}
+
+call_dns_plugin_init() {
+  dns_mode=$(get_dns_mode)
+  if [[ "$dns_mode" == "none" ]]; then return; fi
+  if [[ "$dns_mode" == "etc_hosts" ]]; then return; fi
+  if [[ -x "$dns_mode" ]]; then "$dns_mode" init || true; fi
+}
+
+call_dns_plugin_teardown() {
+  dns_mode=$(get_dns_mode)
+  if [[ "$dns_mode" == "none" ]]; then return; fi
+  if [[ "$dns_mode" == "etc_hosts" ]]; then return; fi
+  if [[ -x "$dns_mode" ]]; then "$dns_mode" teardown || true; fi
 }
 
 ### MAIN ###

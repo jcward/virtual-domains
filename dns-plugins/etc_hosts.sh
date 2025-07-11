@@ -22,8 +22,14 @@ remove_entry() {
   sudo sed -i "/$BEGIN/,/$END/{ /$domain/d }" "$HOSTS_FILE"
 }
 
+remove_hosts_section() {
+  sudo sed -i "/$BEGIN/,/$END/d" "$HOSTS_FILE"
+}
+
 case "$1" in
-  add) add_entry "$2" "$3" ;;  # $2 = domain, $3 = ip
+  init) ;;
+  teardown) remove_hosts_section ;;
+  add) add_entry "$2" "$3" ;;
   remove) remove_entry "$2" ;;
-  *) echo "Usage: $0 add|remove domain [ip]" ;;
+  *) echo "Usage: $0 init|teardown|add <domain> <ip>|remove <domain>" ;;
 esac
