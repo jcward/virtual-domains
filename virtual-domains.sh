@@ -30,10 +30,17 @@ ensure_conf_exists() {
       read -p "What subnet (e.g. 10.0.1.0/24): " subnet
     fi
 
+    echo "What DNS handling plugin should be used?"
+    echo " - etc_hosts (default /etc/hosts)"
+    echo " - none (no DNS integration)"
+    echo " - /path/to/your/plugin.sh"
+    read -p "DNS mode [etc_hosts]: " dns_mode
+    dns_mode=${dns_mode:-etc_hosts}
+
     echo "# mode=$mode" | sudo tee "$CONF_FILE"
     echo "# iface=$iface" | sudo tee -a "$CONF_FILE"
     echo "# subnet=$subnet" | sudo tee -a "$CONF_FILE"
-    echo "# dns=etc_hosts" | sudo tee -a "$CONF_FILE"
+    echo "# dns=$dns_mode" | sudo tee -a "$CONF_FILE"
     echo "# domain ip" | sudo tee -a "$CONF_FILE"
   fi
 }
@@ -113,6 +120,27 @@ EOF
   echo "✅ Service installed and enabled."
 }
 
+teardown_all() {
+  read -p "⚠️  This will remove all virtual domain config and undo all setup. Are you sure? [y/N]: " confirm
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "Aborted."
+    exit 1
+  fi
+
+  echo "Removing all virtual domain IPs and DNS entries..."
+  down_all_ips
+
+  echo "Removing systemd service (if exists)..."
+  sudo systemctl disable virtual-domains.service 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/virtual-domains.service
+  sudo systemctl daemon-reload
+
+  echo "Removing $CONF_FILE..."
+  sudo rm -f "$CONF_FILE"
+
+  echo "\nSo long, and thanks for all the fish! virtual-domains.sh out!"
+}
+
 list_domains() {
   echo "Configured domains:" && grep -v '^#' "$CONF_FILE"
 }
@@ -125,6 +153,7 @@ print_usage() {
   echo "  $0 --up              Re-assign all IPs"
   echo "  $0 --down            Remove all IPs"
   echo "  $0 --install-service Install systemd unit"
+  echo "  $0 --teardown        Uninstall everything (with prompt)"
 }
 
 ### MAIN ###
@@ -135,6 +164,7 @@ case "$1" in
   --up) up_all_ips ;;
   --down) down_all_ips ;;
   --install-service) install_service ;;
+  --teardown) teardown_all ;;
   "") print_usage ;;
   *) add_domain "$1" "$2" ;;
 esac
