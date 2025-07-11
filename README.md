@@ -1,10 +1,11 @@
 # virtual-domains.sh
 
-A lightweight Linux tool for assigning local or LAN-visible IPs to domain names for development.
+A lightweight Linux tool for assigning virtual IPs to local or LAN-visible domain names for development.
 
 ## Features
 
-* Assign local or LAN IPs to development domain names
+* Assign local or LAN virtual IPs to development domain names
+  * e.g. `dev.mydomain.dom` ➡️ `192.168.1.25`
 * Automatically update `/etc/hosts` or pluggable DNS systems
 * Supports loopback or network interface IPs
 * Systemd service for persistence
@@ -46,7 +47,9 @@ A plugin must respond to the following calls:
 
 Available plugins:
 
-* `etc_hosts.sh` (modifies /etc/hosts)
-* `mdns.sh` (publishes .local domains via avahi)
+* etc_hosts.sh - Modifies `/etc/hosts` for pure local development
+* dnsmasq.sh - Sets up a simple dnsmasq server
+* mdns.sh - Publishes `.local` domains via avahi-daemon / avahi-publish
+* mikrotik.sh - Sets DNS entries in Mikrotik RouterOS v6+ routers
 
 You choose the plugin path or name during initial setup.
