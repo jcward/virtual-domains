@@ -93,4 +93,4 @@ Disable the nginx feature at any time with `disable-nginx-site`
 
 ## Releases
 
-- virtual-domains_0.1.0.deb - July 7, 2025
+- v0.1.0 : July 7, 2025 : Initial release
