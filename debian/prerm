@@ -1,3 +1,3 @@
 #!/bin/bash
 set -e
-/usr/local/bin/virtual-domains.sh --teardown --force || true
+/usr/local/bin/virtual-domains --teardown --force || true

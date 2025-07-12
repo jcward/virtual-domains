@@ -19,8 +19,8 @@ mkdir -p "$PKG_DIR/usr/local/bin"
 mkdir -p "$PKG_DIR/usr/local/lib/virtual-domains"
 
 # Inject version into script
-sed "s/0.0.0-DEV/$VERSION/" virtual-domains.sh > "$PKG_DIR/usr/local/bin/virtual-domains.sh"
-chmod 755 "$PKG_DIR/usr/local/bin/virtual-domains.sh"
+sed "s/0.0.0-DEV/$VERSION/" virtual-domains > "$PKG_DIR/usr/local/bin/virtual-domains"
+chmod 755 "$PKG_DIR/usr/local/bin/virtual-domains"
 
 # Copy plugins
 cp dns-plugins/*.sh "$PKG_DIR/usr/local/lib/virtual-domains/"

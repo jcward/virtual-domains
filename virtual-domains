@@ -230,7 +230,7 @@ add_domain() {
   fi
 }
 
-purge_domain() {
+remove_domain() {
   domain=$1
   ip=$(grep "^$domain " "$CONF_FILE" | awk '{print $2}')
   iface=$(get_iface)
@@ -268,7 +268,7 @@ down_all_ips() {
 }
 
 install_service() {
-  SCRIPT_PATH="/usr/local/bin/virtual-domains.sh"
+  SCRIPT_PATH="/usr/local/bin/virtual-domains"
   SERVICE_PATH="/etc/systemd/system/virtual-domains.service"
   if [ ! -f "$SCRIPT_PATH" ]; then
     echo "Expected script at $SCRIPT_PATH"
@@ -320,7 +320,7 @@ teardown_all() {
   echo "Removing $CONF_FILE..."
   sudo rm -f "$CONF_FILE"
 
-  echo "virtual-domains.sh removal complete"
+  echo "virtual-domains removal complete"
 }
 
 list_domains() {
@@ -328,18 +328,18 @@ list_domains() {
 }
 
 print_usage() {
-  echo "virtual-domains.sh $VERSION"
+  echo "virtual-domains $VERSION"
   echo "Usage:"
-  echo "  virtual-domains.sh --add domain ip   Add domain"
-  echo "  virtual-domains.sh --purge domain    Remove domain"
-  echo "  virtual-domains.sh --list            List domains"
-  echo "  virtual-domains.sh --up              Re-assign all IPs"
-  echo "  virtual-domains.sh --down            Remove all IPs"
-  echo "  virtual-domains.sh --enable-nginx-site   Enable nginx reverse proxy"
-  echo "  virtual-domains.sh --disable-nginx-site  Disable nginx reverse proxy"
-  echo "  virtual-domains.sh --install-service Install systemd unit"
-  echo "  virtual-domains.sh --teardown        Uninstall everything (with prompt)"
-  echo "  virtual-domains.sh --version         Print version"
+  echo "  virtual-domains --add domain ip       Add domain"
+  echo "  virtual-domains --remove domain       Remove domain"
+  echo "  virtual-domains --list                List domains"
+  echo "  virtual-domains --up                  Re-assign all IPs"
+  echo "  virtual-domains --down                Remove all IPs"
+  echo "  virtual-domains --enable-nginx-site   Enable nginx reverse proxy"
+  echo "  virtual-domains --disable-nginx-site  Disable nginx reverse proxy"
+  echo "  virtual-domains --install-service     Install systemd unit"
+  echo "  virtual-domains --teardown            Uninstall everything (with prompt)"
+  echo "  virtual-domains --version             Print version"
 }
 
 call_dns_plugin_init() {
@@ -363,7 +363,7 @@ esac
 ### MAIN ###
 case "$1" in
   --add) add_domain "$2" "$3" ;;
-  --purge) purge_domain "$2" ;;
+  --remove) remove_domain "$2" ;;
   --list) list_domains ;;
   --up) up_all_ips ;;
   --down) down_all_ips ;;
