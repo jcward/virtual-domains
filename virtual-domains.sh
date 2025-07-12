@@ -15,6 +15,8 @@ LIB_DIR="$SCRIPT_DIR/../lib/virtual-domains"
 # Read from config
 get_iface() { grep '^# iface=' "$CONF_FILE" | cut -d= -f2; }
 get_dns_mode() { grep '^# dns=' "$CONF_FILE" | cut -d= -f2; }
+get_nginx_site() { grep '^# nginx_site=' "$CONF_FILE" | cut -d= -f2; }
+get_nginx_port_offset() { grep '^# nginx_port_offset=' "$CONF_FILE" | cut -d= -f2; }
 
 # Get IPv4 address and subnet for an interface
 get_interface_info() {
@@ -47,6 +49,70 @@ list_dns_plugins() {
   if [ -d "$LIB_DIR" ]; then
     find "$LIB_DIR" -name "*.sh" -executable -printf " - %f\n" | sort
   fi
+}
+
+# Generate nginx configuration for virtual domains
+generate_nginx_config() {
+  local nginx_config="/etc/nginx/sites-enabled/virtual-domains"
+  local port=$(get_nginx_port_offset)
+  local config_content=""
+  
+  echo "Generating nginx configuration at $nginx_config with port offset $port"
+  
+  # Loop through all domains in config
+  while IFS=' ' read -r domain ip; do
+    if [[ -n "$domain" && -n "$ip" ]]; then
+      config_content+="server {
+  listen 80;
+  server_name $domain;
+  location / {
+    proxy_pass http://localhost:$port;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+  }
+}
+
+"
+      echo "$domain => localhost:$port"
+      ((port++))
+    fi
+  done < <(grep -v '^#' "$CONF_FILE" 2>/dev/null || true)
+  
+  # Write config file
+  echo "$config_content" | sudo tee "$nginx_config" > /dev/null
+  
+  # Reload nginx
+  sudo systemctl reload nginx.service
+  echo "✅ Nginx configuration updated and reloaded."
+}
+
+# Enable nginx site
+enable_nginx_site() {
+  if [ ! -d "/etc/nginx/sites-enabled" ]; then
+    echo "Error: /etc/nginx/sites-enabled directory not found. Is nginx installed?"
+    return 1
+  fi
+  
+  # Update config
+  sudo sed -i 's/^# nginx_site=.*/# nginx_site=enabled/' "$CONF_FILE"
+  
+  # Generate nginx config
+  generate_nginx_config
+}
+
+# Disable nginx site
+disable_nginx_site() {
+  # Update config
+  sudo sed -i 's/^# nginx_site=.*/# nginx_site=disabled/' "$CONF_FILE"
+  
+  # Remove nginx config file
+  sudo rm -f /etc/nginx/sites-enabled/virtual-domains
+  
+  # Reload nginx
+  sudo systemctl reload nginx.service
+  echo "✅ Nginx configuration removed and nginx reloaded."
 }
 
 ensure_conf_exists() {
@@ -99,14 +165,35 @@ ensure_conf_exists() {
       dns_mode="$LIB_DIR/$dns_mode"
     fi
 
+    # Ask about nginx configuration
+    nginx_site="disabled"
+    nginx_port_offset_default=10800
+    if [ -d "/etc/nginx/sites-enabled" ]; then
+      echo
+      echo "Would you like to configure your existing nginx server to reverse proxy your virtual domains to localhost ports?"
+      read -p "Enable nginx reverse proxy? [y/N]: " nginx_choice
+      if [[ "$nginx_choice" == "y" || "$nginx_choice" == "Y" ]]; then
+        nginx_site="enabled"
+        read -p "Starting at what port (e.g. $nginx_port_offset_default): " nginx_port_offset
+        nginx_port_offset=${nginx_port_offset:-$nginx_port_offset_default}
+      fi
+    fi
+
     echo "# mode=$mode" | sudo tee "$CONF_FILE"
     echo "# iface=$iface" | sudo tee -a "$CONF_FILE"
     echo "# subnet=$subnet" | sudo tee -a "$CONF_FILE"
     echo "# dns=$dns_mode" | sudo tee -a "$CONF_FILE"
+    echo "# nginx_site=$nginx_site" | sudo tee -a "$CONF_FILE"
+    echo "# nginx_port_offset=$nginx_port_offset" | sudo tee -a "$CONF_FILE"
     echo "# domain ip" | sudo tee -a "$CONF_FILE"
 
     # Initialize the dns plugin
     call_dns_plugin_init
+
+    # Initialize nginx if enabled
+    if [[ "$nginx_site" == "enabled" ]]; then
+      generate_nginx_config
+    fi
   fi
 }
 
@@ -136,6 +223,11 @@ add_domain() {
   # Only proceed if DNS plugin succeeded
   echo "$domain $ip" | sudo tee -a "$CONF_FILE" > /dev/null
   sudo ip addr add "$ip/32" dev "$iface" || true
+  
+  # Regenerate nginx config if enabled
+  if [[ "$(get_nginx_site)" == "enabled" ]]; then
+    generate_nginx_config
+  fi
 }
 
 purge_domain() {
@@ -147,6 +239,11 @@ purge_domain() {
   if ! grep -q " $ip$" "$CONF_FILE"; then
     sudo ip addr del "$ip/32" dev "$iface" || true
   fi
+  
+  # Regenerate nginx config if enabled
+  if [[ "$(get_nginx_site)" == "enabled" ]]; then
+    generate_nginx_config
+  fi
 }
 
 up_all_ips() {
@@ -155,6 +252,11 @@ up_all_ips() {
     sudo ip addr add "$ip/32" dev "$iface" || true
     call_dns_plugin add "$domain" "$ip"
   done
+  
+  # Regenerate nginx config if enabled
+  if [[ "$(get_nginx_site)" == "enabled" ]]; then
+    generate_nginx_config
+  fi
 }
 
 down_all_ips() {
@@ -211,6 +313,10 @@ teardown_all() {
   echo "Informing DNS plugin of teardown..."
   call_dns_plugin_teardown
 
+  echo "Removing nginx configuration (if exists)..."
+  sudo rm -f /etc/nginx/sites-enabled/virtual-domains
+  sudo systemctl reload nginx.service 2>/dev/null || true
+
   echo "Removing $CONF_FILE..."
   sudo rm -f "$CONF_FILE"
 
@@ -229,6 +335,8 @@ print_usage() {
   echo "  virtual-domains.sh --list            List domains"
   echo "  virtual-domains.sh --up              Re-assign all IPs"
   echo "  virtual-domains.sh --down            Remove all IPs"
+  echo "  virtual-domains.sh --enable-nginx-site   Enable nginx reverse proxy"
+  echo "  virtual-domains.sh --disable-nginx-site  Disable nginx reverse proxy"
   echo "  virtual-domains.sh --install-service Install systemd unit"
   echo "  virtual-domains.sh --teardown        Uninstall everything (with prompt)"
   echo "  virtual-domains.sh --version         Print version"
@@ -246,14 +354,21 @@ call_dns_plugin_teardown() {
   if [[ -x "$dns_mode" ]]; then "$dns_mode" teardown || true; fi
 }
 
+# ensure_conf_exists for all options except --teardown
+case "$1" in
+  --teardown) sudo touch $CONF_FILE;;
+  *) ensure_conf_exists # enforce setup
+esac
+
 ### MAIN ###
-ensure_conf_exists
 case "$1" in
   --add) add_domain "$2" "$3" ;;
   --purge) purge_domain "$2" ;;
   --list) list_domains ;;
   --up) up_all_ips ;;
   --down) down_all_ips ;;
+  --enable-nginx-site) enable_nginx_site ;;
+  --disable-nginx-site) disable_nginx_site ;;
   --install-service) install_service ;;
   --teardown) teardown_all "$2" ;;
   --version) echo "$VERSION" ;;
