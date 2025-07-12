@@ -19,7 +19,7 @@ uninstall:
 		echo "Error: uninstall at $(PREFIX) must be run with root privileges. Please use sudo. Aborting." >&2; \
 		exit 1; \
 	fi
-	$(BIN_DIR)/virtual-domains --teardown --force || true
+	$(BIN_DIR)/virtual-domains teardown --force || true
 	rm -f $(BIN_DIR)/virtual-domains
 	rm -rf $(LIB_DIR)
 	rm -f /etc/systemd/system/virtual-domains.service

@@ -28,16 +28,16 @@ This installs:
 Note that sudo is typically required.
 
 ```sh
-virtual-domains --add mysite.test 10.0.1.50
-virtual-domains --remove mysite.test
-virtual-domains --list
-virtual-domains --up     # reassign all
-virtual-domains --down   # remove all
-virtual-domains --enable-nginx-site   # enable nginx reverse proxy
-virtual-domains --disable-nginx-site  # disable nginx reverse proxy
-virtual-domains --install-service
-virtual-domains --teardown
-virtual-domains --version
+virtual-domains add mysite.test 10.0.1.50
+virtual-domains remove mysite.test
+virtual-domains list
+virtual-domains up     # reassign all
+virtual-domains down   # remove all
+virtual-domains enable-nginx-site   # enable nginx reverse proxy
+virtual-domains disable-nginx-site  # disable nginx reverse proxy
+virtual-domains install-service
+virtual-domains teardown
+virtual-domains version
 ```
 
 ## DNS Plugin Interface
@@ -80,6 +80,10 @@ The nginx port offset can be changed by editing `/etc/virtual-domains.conf`:
 # nginx_port_offset=10800  # Change this to start at a different port
 ```
 
-After changing the port offset, run `--enable-nginx-site` to regenerate the nginx configuration.
+After changing the port offset, run `enable-nginx-site` to regenerate the nginx configuration.
 
-Disable the nginx feature at any time with `--disable-nginx-site`
+Disable the nginx feature at any time with `disable-nginx-site`
+
+## Releases
+
+- virtual-domains_0.1.0.deb - July 7, 2025

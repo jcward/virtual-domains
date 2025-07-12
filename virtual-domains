@@ -330,16 +330,16 @@ list_domains() {
 print_usage() {
   echo "virtual-domains $VERSION"
   echo "Usage:"
-  echo "  virtual-domains --add domain ip       Add domain"
-  echo "  virtual-domains --remove domain       Remove domain"
-  echo "  virtual-domains --list                List domains"
-  echo "  virtual-domains --up                  Re-assign all IPs"
-  echo "  virtual-domains --down                Remove all IPs"
-  echo "  virtual-domains --enable-nginx-site   Enable nginx reverse proxy"
-  echo "  virtual-domains --disable-nginx-site  Disable nginx reverse proxy"
-  echo "  virtual-domains --install-service     Install systemd unit"
-  echo "  virtual-domains --teardown            Uninstall everything (with prompt)"
-  echo "  virtual-domains --version             Print version"
+  echo "  virtual-domains add domain ip       Add domain"
+  echo "  virtual-domains remove domain       Remove domain"
+  echo "  virtual-domains list                List domains"
+  echo "  virtual-domains up                  Re-assign all IPs"
+  echo "  virtual-domains down                Remove all IPs"
+  echo "  virtual-domains enable-nginx-site   Enable nginx reverse proxy"
+  echo "  virtual-domains disable-nginx-site  Disable nginx reverse proxy"
+  echo "  virtual-domains install-service     Install systemd unit"
+  echo "  virtual-domains teardown            Uninstall everything (with prompt)"
+  echo "  virtual-domains version             Print version"
 }
 
 call_dns_plugin_init() {
@@ -354,23 +354,23 @@ call_dns_plugin_teardown() {
   if [[ -x "$dns_mode" ]]; then "$dns_mode" teardown || true; fi
 }
 
-# ensure_conf_exists for all options except --teardown
+# ensure_conf_exists for all options except teardown
 case "$1" in
-  --teardown) sudo touch $CONF_FILE;;
+  teardown) sudo touch $CONF_FILE ;;
   *) ensure_conf_exists # enforce setup
 esac
 
 ### MAIN ###
 case "$1" in
-  --add) add_domain "$2" "$3" ;;
-  --remove) remove_domain "$2" ;;
-  --list) list_domains ;;
-  --up) up_all_ips ;;
-  --down) down_all_ips ;;
-  --enable-nginx-site) enable_nginx_site ;;
-  --disable-nginx-site) disable_nginx_site ;;
-  --install-service) install_service ;;
-  --teardown) teardown_all "$2" ;;
-  --version) echo "$VERSION" ;;
+  a|add) add_domain "$2" "$3" ;;
+  r|remove) remove_domain "$2" ;;
+  l|list) list_domains ;;
+  u|up) up_all_ips ;;
+  d|down) down_all_ips ;;
+  n|enable-nginx-site) enable_nginx_site ;;
+  x|disable-nginx-site) disable_nginx_site ;;
+  i|install-service) install_service ;;
+  teardown) teardown_all "$2" ;;
+  v|version) echo "$VERSION" ;;
   *) print_usage ;;
 esac
