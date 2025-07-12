@@ -4,13 +4,12 @@ A lightweight Linux tool for assigning virtual IPs to local or LAN-visible domai
 
 ## Features
 
-* Assign local or LAN virtual IPs to development domain names
+* Assign virtual IPs and domain names to your localhost
   * e.g. `dev.mydomain.dom` ➡️ `192.168.1.25`
-* Automatically update `/etc/hosts` or pluggable DNS systems
-* Nginx reverse proxy integration - automatically proxy domains to localhost ports
-* Supports loopback or network interface IPs
-* Systemd service for persistence
-* Plugin architecture for DNS strategies: etc\_hosts, dnsmasq, mdns (avahi), mikrotik, etc.
+* Automatically update `/etc/hosts` or use a DNS plugin
+* For HTTP use, automatic configuration of Nginx reverse proxy, directing domains to localhost ports
+* Choose your ethernet interface
+* Systemd service for persistence after reboot
 
 ## Installation
 
@@ -28,21 +27,34 @@ This installs:
 Note that sudo is typically required.
 
 ```sh
-virtual-domains add mysite.test 10.0.1.50
-virtual-domains remove mysite.test
-virtual-domains list
-virtual-domains up     # reassign all
-virtual-domains down   # remove all
-virtual-domains enable-nginx-site   # enable nginx reverse proxy
-virtual-domains disable-nginx-site  # disable nginx reverse proxy
-virtual-domains install-service
-virtual-domains teardown
-virtual-domains version
+Usage:
+  virtual-domains add domain ip       Add domain
+  virtual-domains remove domain       Remove domain
+  virtual-domains list                List domains
+  virtual-domains up                  Re-assign all IPs
+  virtual-domains down                Remove all IPs
+  virtual-domains enable-nginx-site   Enable nginx reverse proxy
+  virtual-domains disable-nginx-site  Disable nginx reverse proxy
+  virtual-domains install-service     Install systemd unit
+  virtual-domains teardown            Uninstall everything (with prompt)
+  virtual-domains version             Print version
 ```
 
-## DNS Plugin Interface
+## DNS Plugins
 
-A plugin must respond to the following calls:
+`virtual-domains` supports a variety of DNS solutions through the use of plugins. The plugin
+scripts are called via hooks, to keep your DNS up to date with your domain names / IP addresses.
+
+The following DNS plugins are included, right out of the box, and can be selected at setup:
+
+* `etc_hosts.sh` - Modifies `/etc/hosts` for pure local development (domains only visible to your machine.)
+* `dnsmasq.sh` - Sets up a simple dnsmasq server (domains visible to any clients of this DNS server.)
+* `mdns.sh` - Publishes `.local` domains via `avahi-daemon` / `avahi-publish` (domains visible to anyone on your LAN. Generally only compatible with `.local` domains.) 
+* `mikrotik.sh` - Uses ssh to set DNS entries in Mikrotik RouterOS v6+ routers (domains visible to anyone on your LAN. Supports any domain.)
+
+### DNS Plugin Development
+
+To develop your own DNS plugin, it must respond to the following calls:
 
 ```sh
 /path/to/plugin.sh init
@@ -51,14 +63,9 @@ A plugin must respond to the following calls:
 /path/to/plugin.sh remove <domain>
 ```
 
-Available plugins:
+At teardown time, remove will be called for each configured domain, so teardown only needs to cleanup things setup via init.
 
-* etc_hosts.sh - Modifies `/etc/hosts` for pure local development
-* dnsmasq.sh - Sets up a simple dnsmasq server
-* mdns.sh - Publishes `.local` domains via avahi-daemon / avahi-publish
-* mikrotik.sh - Sets DNS entries in Mikrotik RouterOS v6+ routers
-
-You choose the plugin path or name during initial setup.
+The plugin is expected to manage its own reboot sensitivity / persistence.
 
 ## Nginx Reverse Proxy
 
