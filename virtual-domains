@@ -194,6 +194,14 @@ ensure_conf_exists() {
     if [[ "$nginx_site" == "enabled" ]]; then
       generate_nginx_config
     fi
+    
+    # Ask whether to install systemd service
+    echo
+    echo "Would you like to install a systemd service to automatically restore virtual domain IPs on boot?"
+    read -p "Install systemd service? [y/N]: " systemd_choice
+    if [[ "$systemd_choice" == "y" || "$systemd_choice" == "Y" ]]; then
+      install_service
+    fi
   fi
 }
 
@@ -281,9 +289,9 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=$SCRIPT_PATH --up
+ExecStart=$SCRIPT_PATH up
 RemainAfterExit=true
-ExecStop=$SCRIPT_PATH --down
+ExecStop=$SCRIPT_PATH down
 
 [Install]
 WantedBy=multi-user.target

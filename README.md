@@ -94,3 +94,4 @@ Disable the nginx feature at any time with `disable-nginx-site`
 ## Releases
 
 - v0.1.0 : July 7, 2025 : Initial release
+- v0.1.1 : July 14, 2025 : Fix systemd service arg typos (up / down)
