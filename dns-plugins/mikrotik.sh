@@ -29,7 +29,9 @@ case "$1" in
   teardown)
     load_config
     echo "🧹 Deleting all virtual-domains entries from MikroTik..."
-    run_ssh '/ip dns static remove [find comment=\"virtual-domains\"]'
+    if ! run_ssh '/ip dns static remove [find comment="virtual-domains"]'; then
+      echo "Warning: Failed to remove some entries from MikroTik"
+    fi
     echo "Removing $CONFIG_FILE"
     sudo rm -f "$CONFIG_FILE"
     ;;
@@ -37,18 +39,41 @@ case "$1" in
     load_config
     domain="$2"
     ip="$3"
-    run_ssh \"/ip dns static remove [find name=$domain]\"
-    run_ssh \"/ip dns static add name=$domain address=$ip comment=virtual-domains\"
+    # Combine both commands into a single SSH session
+    if ! run_ssh "/ip dns static remove [find name=\"$domain\"]; /ip dns static add name=\"$domain\" address=\"$ip\" comment=\"virtual-domains\""; then
+      echo "Error: Failed to add $domain → $ip to MikroTik"
+      exit 1
+    fi
     echo "✅ Added $domain → $ip to MikroTik"
     ;;
   remove)
     load_config
     domain="$2"
-    run_ssh \"/ip dns static remove [find name=$domain]\"
+    if ! run_ssh "/ip dns static remove [find name=\"$domain\"]"; then
+      echo "Error: Failed to remove $domain from MikroTik"
+      exit 1
+    fi
     echo "🛑 Removed $domain from MikroTik"
     ;;
+  debug)
+    load_config
+    echo "📋 MikroTik DNS Static Entries:"
+    echo "==============================="
+    echo
+    echo "🔍 virtual-domains entries:"
+    if ! run_ssh '/ip dns static print detail where comment="virtual-domains"'; then
+      echo "Error: Failed to query MikroTik DNS entries"
+      exit 1
+    fi
+    echo
+    echo "📋 All DNS static entries:"
+    if ! run_ssh '/ip dns static print detail'; then
+      echo "Error: Failed to query MikroTik DNS entries"
+      exit 1
+    fi
+    ;;
   *)
-    echo "Usage: $0 init|teardown|add <domain> <ip>|remove <domain>"
+    echo "Usage: $0 init|teardown|add <domain> <ip>|remove <domain>|debug"
     exit 1
     ;;
 esac

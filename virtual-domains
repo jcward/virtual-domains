@@ -240,10 +240,24 @@ add_domain() {
 
 remove_domain() {
   domain=$1
+  # Extract IP address before removing from config
   ip=$(grep "^$domain " "$CONF_FILE" | awk '{print $2}')
+  
+  # Validate that we found an IP address
+  if [[ -z "$ip" ]]; then
+    echo "Warning: Domain $domain not found in config file"
+    return 1
+  fi
+  
   iface=$(get_iface)
+  
+  # Remove from config file
   sudo sed -i "/^$domain /d" "$CONF_FILE"
+  
+  # Call DNS plugin to remove
   call_dns_plugin remove "$domain" "$ip"
+  
+  # Remove IP from interface only if no other domains use it
   if ! grep -q " $ip$" "$CONF_FILE"; then
     sudo ip addr del "$ip/32" dev "$iface" || true
   fi
