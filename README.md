@@ -36,6 +36,7 @@ Usage:
   virtual-domains enable-nginx-site   Enable nginx reverse proxy
   virtual-domains disable-nginx-site  Disable nginx reverse proxy
   virtual-domains install-service     Install systemd unit
+  virtual-domains flush-dns-cache     Flush local DNS cache
   virtual-domains teardown            Uninstall everything (with prompt)
   virtual-domains version             Print version
 ```
@@ -95,3 +96,4 @@ Disable the nginx feature at any time with `disable-nginx-site`
 
 - v0.1.0 : July 7, 2025 : Initial release
 - v0.1.1 : July 14, 2025 : Fix systemd service arg typos (up / down)
+- v0.1.2 : July 14, 2025 : Fix #2 and #3 - mikrotik and flush dns cache
