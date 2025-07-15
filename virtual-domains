@@ -360,6 +360,7 @@ print_usage() {
   echo "  virtual-domains enable-nginx-site   Enable nginx reverse proxy"
   echo "  virtual-domains disable-nginx-site  Disable nginx reverse proxy"
   echo "  virtual-domains install-service     Install systemd unit"
+  echo "  virtual-domains flush-dns-cache     Flush local DNS cache"
   echo "  virtual-domains teardown            Uninstall everything (with prompt)"
   echo "  virtual-domains version             Print version"
 }
@@ -374,6 +375,36 @@ call_dns_plugin_teardown() {
   dns_mode=$(get_dns_mode)
   if [[ "$dns_mode" == "none" ]]; then return; fi
   if [[ -x "$dns_mode" ]]; then "$dns_mode" teardown || true; fi
+}
+
+flush_dns_cache() {
+  echo "🧹 Flushing DNS cache..."
+  
+  # Try systemd-resolved (most common on modern Linux)
+  if systemctl is-active --quiet systemd-resolved; then
+    echo "  - Flushing systemd-resolved cache..."
+    sudo resolvectl flush-caches && echo "    ✅ systemd-resolved cache flushed"
+  fi
+  
+  # Try nscd (older systems)
+  if systemctl is-active --quiet nscd; then
+    echo "  - Restarting nscd..."
+    sudo systemctl restart nscd && echo "    ✅ nscd restarted"
+  fi
+  
+  # Try dnsmasq (if running)
+  if systemctl is-active --quiet dnsmasq; then
+    echo "  - Restarting dnsmasq..."
+    sudo systemctl restart dnsmasq && echo "    ✅ dnsmasq restarted"
+  fi
+  
+  # Try NetworkManager (common on desktop systems)
+  if systemctl is-active --quiet NetworkManager; then
+    echo "  - Restarting NetworkManager..."
+    sudo systemctl restart NetworkManager && echo "    ✅ NetworkManager restarted"
+  fi
+  
+  echo "✅ DNS cache flush complete"
 }
 
 # ensure_conf_exists for all options except teardown
@@ -392,6 +423,7 @@ case "$1" in
   n|enable-nginx-site) enable_nginx_site ;;
   x|disable-nginx-site) disable_nginx_site ;;
   i|install-service) install_service ;;
+  f|flush-dns-cache) flush_dns_cache ;;
   teardown) teardown_all "$2" ;;
   v|version) echo "$VERSION" ;;
   *) print_usage ;;
